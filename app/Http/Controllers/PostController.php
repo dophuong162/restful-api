@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Post;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class PostController extends Controller
 {
@@ -25,13 +26,24 @@ class PostController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'user_id' => 'required|exists:users,id',
             'title' => 'required|string|max:255',
             'content' => 'required|string',
+        ], [
+            'user_id.required' => 'Please select a user.',
+            'user_id.exists' => 'User does not exist.',
+            'title.required' => 'Title is required.',
+            'title.max' => 'Title cannot exceed 255 characters.',
+            'content.required' => 'Content is required.',
         ]);
-
-        $post = Post::create($validated);
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+        $post = Post::create($validator->validated());
         return response()->json($post, 201);
     }
 
@@ -59,16 +71,27 @@ class PostController extends Controller
      */
     public function update(Request $request, Post $post)
     {
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'title' => 'sometimes|string|max:255',
             'content' => 'sometimes|string',
+        ], [
+            'title.string' => 'The title must be a string of characters.',
+            'title.max' => 'Title cannot exceed 255 characters.',
+            'content.string' => 'The content must be a string of characters.',
         ]);
-        $post->update($validated);
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+        $post->update($validator->validated());
         return response()->json([
             'message' => 'Post updated successfully',
             'data' => $post,
         ], 200);
     }
+
 
     /**
      * Remove the specified resource from storage.
@@ -82,8 +105,8 @@ class PostController extends Controller
         if (!$post) {
             return response()->json(['message' => 'Post not found'], 404);
         }
-
         $post->delete();
         return response()->json(['message' => 'Post deleted successfully'], 200);
     }
+
 }
